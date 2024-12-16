@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Image, Pressable } from 'react-native'
+import { View, Text, TextInput, StyleSheet, ScrollView, Image, Pressable } from 'react-native'
 import { FontAwesome, FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router'
 
@@ -9,19 +9,47 @@ export default function SignInScreen() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
       <View style={styles.topNav}>
-        <Image source={logo} />
+          <Image source={logo} style={{ width: 240, resizeMode: 'contain' }} />
       </View>
 
       <View style={styles.pageContainer}>
         <View style={styles.topContainer}>
           <View style={styles.titleContainer}>
-            <Text style={styles.pageTitle}>Welcome back! Sign in to continue.</Text>
+            <Text style={styles.pageTitle}>Welcome back!</Text>
+            <Text style={styles.pageTitle}>Sign in to continue.</Text>
+          </View>
+
+          <View style={styles.formContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email Address"
+              // Optional props:
+              // onChangeText={(text) => handleFirstInput(text)}
+              // value={firstValue}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              // Optional props:
+              // onChangeText={(text) => handleSecondInput(text)}
+              // value={secondValue}
+            />
+            <Pressable onPress={() => router.push('/forgotpassword')}>
+              <Text style={styles.forgotPassword}>Forgot password?</Text>
+            </Pressable>
           </View>
         </View>
 
         <View style={styles.bottomContainer}>
-          <Text style={styles.optionText}>Don't have account?</Text>
-          <Text style={styles.optionText}>Sign Up</Text>
+          <Pressable style={styles.buttonMain}>
+            <Text style={styles.buttonTextMain}>Login</Text>
+          </Pressable>
+          <View style={styles.optionContainer}>
+            <Text style={styles.optionText}>Don't have account?</Text>
+            <Pressable onPress={() => router.push('/signup')}>
+              <Text style={styles.optionTextLink}>Sign Up</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -31,7 +59,7 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 30,
   },
   container: {
     flex: 1,
@@ -41,13 +69,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 60,
-    marginTop: 14,
-    marginBottom: 20,
+    marginTop: 8,
+    marginBottom: 8,
     paddingHorizontal: 14,
+    paddingVertical: 100,
   },
-  title: {
-    fontWeight: 'bold',
-    fontSize: 20,
+  formContainer: {
+    marginTop: 24,
+    marginBottom: 48,
+    gap: 12,
+  },
+  input: {
+    height: 48,
+    paddingHorizontal: 24,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    fontSize: 16,
+  },
+  forgotPassword: {
+    fontSize: 16,
+    fontWeight: 700,
+    textAlign: 'right',
   },
   pageContainer: {
     flex: 1,
@@ -57,24 +99,43 @@ const styles = StyleSheet.create({
 
   },
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: 'column',
+    marginLeft: 24,
   },
   pageTitle: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 24,
   },
   bottomContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  buttonMain: {
+    width: '100%',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 28,
+    backgroundColor: '#2ED573',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonTextMain: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  optionContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 30,
-    marginTop: 48,
+    gap: 4,
   },
   optionText: {
-    textAlign: 'center',
-    maxWidth: 150,
+    fontSize: 16,
+  },
+  optionTextLink: {
+    color: '#2ED573',
+    fontSize: 16,
   },
 });
