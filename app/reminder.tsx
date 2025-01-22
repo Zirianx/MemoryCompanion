@@ -1,6 +1,6 @@
 import { View, Text, TextInput, StyleSheet, ScrollView, Image, Pressable } from 'react-native'
 import React, { useState, useEffect } from 'react';
-import { FontAwesome, FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons';
+import { FontAwesome, FontAwesome5, FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -67,6 +67,15 @@ export default function ReminderScreen() {
     }
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    //filter out the tasks with the given id
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
+    setTasks(updatedTasks);
+
+    //save the updated tasks to storage
+    await saveTasks(updatedTasks);
+  };
+
   const handleDateChange = (event: any, date?: Date) => {
     setShowDatePicker(false);
     if(date) {
@@ -109,7 +118,7 @@ export default function ReminderScreen() {
         </View>
         <Text style={styles.title}>Reminder</Text>
         <View style={styles.rightContainer}>
-          <FontAwesome6 name="magnifying-glass" size={28} color="#333" />
+          {/* <FontAwesome6 name="magnifying-glass" size={28} color="#333" /> */}
         </View>
       </View>
 
@@ -124,8 +133,16 @@ export default function ReminderScreen() {
             <View style={styles.reminderContainer}>
             {tasks.map(task => (
               <View key={task.id} style={styles.taskItem}>
-                <MaterialCommunityIcons style={styles.taskIcon} name="clock" size={24} color="#333" />
-                <Text style={styles.task}>{formatDisplayDate(task.date)} - {task.task}</Text>
+                <View style={styles.eachTask}>
+                  <MaterialCommunityIcons style={styles.taskIcon} name="clock" size={24} color="#596275" />
+                  <Text style={styles.task}>{formatDisplayDate(task.date)} - {task.task}</Text>
+                </View>
+                <Pressable
+                  onPress={() => handleDeleteTask(task.id)}
+                  style={styles.deleteButton}
+                >
+                  <FontAwesome5 name="trash" size={20} color="#FF6881" />
+                </Pressable>
               </View>
             ))}
             </View>
@@ -160,6 +177,7 @@ export default function ReminderScreen() {
                 value={newTask}
                 onChangeText={setNewTask}
               />
+
               <Pressable style={styles.buttonMain} onPress={handleAddTask}>
                 <Text style={styles.buttonTextMain}>Add</Text>
               </Pressable>
@@ -285,6 +303,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  deleteButton: {
+
+  },
   formContainer: {
     width: '100%',
     marginTop: 24,
@@ -299,8 +320,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   taskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eachTask: {
     paddingVertical: 4,
     flexDirection: 'row',
+    maxWidth: 200,
   },
   taskIcon: {
     width: 32,
@@ -314,6 +341,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 10,
   },
   noContent: {
     textAlign: 'center',

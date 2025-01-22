@@ -1,10 +1,41 @@
 import { View, Text, TextInput, StyleSheet, ScrollView, Image, Pressable } from 'react-native'
 import { FontAwesome, FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router'
+import React, { useState, useEffect } from 'react';
+import { useAuth } from "../context/AuthContext";
 
 const logo = require('../assets/images/MemoryCompanionLogo.png')
 
 export default function SignUpScreen() {
+  const { user, signUp } = useAuth();
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [user]);
+
+  const handleSignUp = async () => {
+    if(!email || !name || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const success = await signUp(email, name, password);
+    if(!success) {
+      setSuccess('');
+      setError('Email already exists or registration failed');
+    } else {
+      setError('');
+      setSuccess('Account successfully registered');
+    }
+  }
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
@@ -23,29 +54,29 @@ export default function SignUpScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email Address"
-              // Optional props:
-              // onChangeText={(text) => handleFirstInput(text)}
-              // value={firstValue}
+              value={email}
+              onChangeText={setEmail}
             />
             <TextInput
               style={styles.input}
               placeholder="Name"
-              // Optional props:
-              // onChangeText={(text) => handleSecondInput(text)}
-              // value={secondValue}
+              value={name}
+              onChangeText={setName}
             />
             <TextInput
               style={styles.input}
               placeholder="Password"
-              // Optional props:
-              // onChangeText={(text) => handleSecondInput(text)}
-              // value={secondValue}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
             />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {success ? <Text style={styles.success}>{success}</Text> : null}
           </View>
         </View>
 
         <View style={styles.bottomContainer}>
-          <Pressable style={styles.buttonMain}>
+          <Pressable style={styles.buttonMain} onPress={handleSignUp}>
             <Text style={styles.buttonTextMain}>Sign Up</Text>
           </Pressable>
           <View style={styles.optionContainer}>
@@ -141,5 +172,13 @@ const styles = StyleSheet.create({
   optionTextLink: {
     color: '#2ED573',
     fontSize: 16,
+  },
+  error: {
+    color: 'red',
+    textAlign: 'center',
+  },
+  success: {
+    color: 'green',
+    textAlign: 'center',
   },
 });

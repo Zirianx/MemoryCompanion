@@ -1,10 +1,63 @@
 import { View, Text, TextInput, StyleSheet, ScrollView, Image, Pressable } from 'react-native'
 import { FontAwesome, FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router'
+import { Redirect } from "expo-router";
+import { useAuth } from "../context/AuthContext";
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useEffect, useState } from 'react';
+import { User } from '@/types'
 
 const logo = require('../assets/images/MemoryCompanionLogo.png')
 
 export default function SignInScreen() {
+  const { user, signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const checkStorage = async () => {
+      try {
+        const users = await AsyncStorage.getItem('users');
+
+        if(!users) {
+          console.log('No users found in storage');
+          return;
+        }
+
+        const parsedUsers = JSON.parse(users);
+
+        const usersWithoutImage = parsedUsers.map((user: User) => {
+          const { image, ...userWithoutImage } = user;
+          return userWithoutImage;
+        });
+        
+        console.log('Stored user:', usersWithoutImage);
+  
+      } catch (err) {
+        console.error('Error reading storage:', err);
+      }
+    };
+    
+    checkStorage();
+  }, [])
+
+  const handleSignIn = async () => {
+    if(!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const success = await signIn(email, password);
+    if(!success) {
+      setError('Invalid email or password');
+    }
+  }
+
+  if(user) {
+    return <Redirect href="/" />;
+  }
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
@@ -23,16 +76,15 @@ export default function SignInScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email Address"
-              // Optional props:
-              // onChangeText={(text) => handleFirstInput(text)}
-              // value={firstValue}
+              value={email}
+              onChangeText={setEmail}
             />
             <TextInput
               style={styles.input}
               placeholder="Password"
-              // Optional props:
-              // onChangeText={(text) => handleSecondInput(text)}
-              // value={secondValue}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
             />
             <Pressable onPress={() => router.push('/forgotpassword')}>
               <Text style={styles.forgotPassword}>Forgot password?</Text>
@@ -41,7 +93,9 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.bottomContainer}>
-          <Pressable style={styles.buttonMain}>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable style={styles.buttonMain} onPress={handleSignIn}>
             <Text style={styles.buttonTextMain}>Login</Text>
           </Pressable>
           <View style={styles.optionContainer}>
@@ -137,5 +191,9 @@ const styles = StyleSheet.create({
   optionTextLink: {
     color: '#2ED573',
     fontSize: 16,
+  },
+  error: {
+    color: 'red',
+    textAlign: 'center',
   },
 });

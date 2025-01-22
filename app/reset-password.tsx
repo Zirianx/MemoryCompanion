@@ -1,6 +1,6 @@
 import { View, Text, TextInput, StyleSheet, ScrollView, Image, Pressable, Alert } from 'react-native'
 import { FontAwesome, FontAwesome6 } from '@expo/vector-icons';
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '@/types';
@@ -8,16 +8,23 @@ import { User } from '@/types';
 const logo = require('../assets/images/MemoryCompanionLogo.png')
 
 export default function ForgotPasswordScreen() {
-  const [emailOrName, setEmailOrName] = useState('');
+  const { email } = useLocalSearchParams();
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleResetPassword = async () => {
+  const handleUpdatePassword = async () => {
     try {
-      if(!emailOrName.trim()) {
-        Alert.alert('Error', 'Please enter your email or name');
+      //validation
+      if(!newPassword || !confirmPassword) {
+        Alert.alert('Error', 'Please fill in all fields');
         return;
       }
 
-      //get users from storage
+      if(newPassword !== confirmPassword) {
+        Alert.alert('Error', 'Password do not match');
+        return;
+      }
+
       const usersJson = await AsyncStorage.getItem('users');
       if(!usersJson) {
         Alert.alert('Error', 'Something went wrong');
@@ -26,40 +33,24 @@ export default function ForgotPasswordScreen() {
 
       const users = JSON.parse(usersJson) as User[];
 
-      //find user by email or name
-      const user = users.find(u => 
-        u.email.toLowerCase() === emailOrName.toLowerCase() ||
-        u.name.toLowerCase() === emailOrName.toLowerCase()
-      );
+      //update user's password
+      const updatedUsers = users.map(user => {
+        if(user.email === email) {
+            return { ...user, password: newPassword };
+        }
+        return user;
+      });
 
-      if(!user) {
-        Alert.alert('Error', 'User not found');
-        return;
-      }
+      await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
 
-      // In a real app should:
-      // 1. Generate a reset token
-      // 2. Send an email with a reset link
-      // 3. Store the token with an expiration time
-
-      // for demo purposes, let user reset directly
       Alert.alert(
-        'Reset password',
-        'Do you want to reset your password?',
+        'Success',
+        'Password has been reset successfully',
         [
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          },
-          {
-            text: 'Yes',
-            onPress: () => {
-              router.push({
-                pathname: '/reset-password',
-                params: { email: user.email }
-              })
+            {
+                text: 'OK',
+                onPress: () => router.push('/signin')
             }
-          }
         ]
       );
 
@@ -79,32 +70,31 @@ export default function ForgotPasswordScreen() {
       <View style={styles.pageContainer}>
         <View style={styles.topContainer}>
           <View style={styles.titleContainer}>
-            <Text style={styles.pageTitle}>Send email to</Text>
-            <Text style={styles.pageTitle}>reset your password.</Text>
+            <Text style={styles.pageTitle}>Reset your password</Text>
           </View>
 
           <View style={styles.formContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Email Address / Name"
-              value={emailOrName}
-              onChangeText={setEmailOrName}
-              autoCapitalize='none'
-              keyboardType='email-address'
+              placeholder="New Password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm New Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
             />
           </View>
         </View>
 
         <View style={styles.bottomContainer}>
-          <Pressable style={styles.buttonMain} onPress={handleResetPassword}>
-            <Text style={styles.buttonTextMain}>Send</Text>
+          <Pressable style={styles.buttonMain} onPress={handleUpdatePassword}>
+            <Text style={styles.buttonTextMain}>Reset Password</Text>
           </Pressable>
-          <View style={styles.optionContainer}>
-            <Text style={styles.optionText}>Remember your password?</Text>
-            <Pressable onPress={() => router.push('/signin')}>
-              <Text style={styles.optionTextLink}>Login</Text>
-            </Pressable>
-          </View>
         </View>
       </View>
 

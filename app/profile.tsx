@@ -1,38 +1,121 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, TouchableOpacity, Modal } from 'react-native'
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, TouchableOpacity, Modal, TextInput } from 'react-native'
+import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome, FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import { Avatar } from "react-native-elements";
 import { router } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User, EditableUserFields } from '../types'
+import { useAuth } from '@/context/AuthContext';
 
 // const noReminder = require('../assets/images/reminder-none.png')
-const UserImage = require('@/assets/images/user.png')
+const UserImage = require('@/assets/images/default-user.png')
 
 export default function ProfileScreen() {
+  const { user, setUser, signOut } = useAuth();
   const [menuVisible, setMenuVisible] = useState<boolean>(false);
-
-  const onEdit = (): void => {
-    console.log('Edit Pressed');
-  };
-
-  const onLogout = (): void => {
-    router.replace('/signin');
-  };
-
-  const seePassword = (): void => {
-    console.log('See Password Pressed');
-  };
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editedUser, setEditedUser] = useState<EditableUserFields>({
+    name: user?.name || '',
+    image: user?.image || '',
+    birthdate: user?.birthdate || '',
+    address: user?.address || '',
+    mobileNo: user?.mobileNo || '',
+  });
 
   const handleMenuPress = (): void => {
     setMenuVisible(!menuVisible);
   }
 
-  const handleOption = (action: 'logout' | 'edit'): void => {
+  const handleOption = async (action: 'logout' | 'edit'): Promise<void> => {
     setMenuVisible(false);
 
     if(action === 'edit') {
-      onEdit();
+      setIsEditing(true);
     } else if (action === 'logout') {
-      onLogout();
+      try {
+        await signOut();
+        router.replace('/signin');
+      } catch (err) {
+        console.error('Error during logout:', err);
+      }
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      // Get current users array
+      const usersJson = await AsyncStorage.getItem('users');
+      const users: User[] = usersJson ? JSON.parse(usersJson) : [];
+
+      // Preserve email and password while updating other fields
+      const updatedUsers = users.map(u => {
+        if(u.email === user?.email) {
+          return {
+            ...u,
+            ...editedUser
+          };
+        }
+        return u;
+      });
+
+      // Save updated users array
+      await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
+
+      // For current user, preserve email and password
+      const updatedUser: User = { 
+        ...user!, // Keep existing user data including email and password
+        ...editedUser // Update editable fields
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      setIsEditing(false);
+      alert('Profile updated successfully');
+    } catch (err) {
+      console.error('Error saving user data:', err);
+    }
+  }
+
+  const handleCancel = () => {
+    setEditedUser({
+      name: user?.name || '',
+      image: user?.image || '',
+      birthdate: user?.birthdate || '',
+      address: user?.address || '',
+      mobileNo: user?.mobileNo || '',
+    });
+    setIsEditing(false);
+  }
+
+  const pickImage = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if(status !== 'granted') {
+        alert('Sorry, we need camera roll permissions to change your profile picture.');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      })
+
+      if(!result.canceled && result.assets[0].base64) {
+        setEditedUser(prev => ({
+          ...prev,
+          image: `data:image/jpeg;base64,${result.assets[0].base64}`
+        }));
+      }
+    } catch (err) {
+      console.error('Error picking image', err);
+      alert('Error picking image');
     }
   }
 
@@ -87,8 +170,35 @@ export default function ProfileScreen() {
       <View style={styles.pageContainer}>
         <View style={styles.topContainer}>
           <View style={styles.titleContainer}>
-            <Avatar rounded source={UserImage} size="large" />
-            <Text style={styles.pageTitle}>John Doe</Text>
+            <TouchableOpacity
+              onPress={isEditing ? pickImage : undefined}
+            >
+              {(editedUser.image || user?.image) ? (
+                <Avatar 
+                  rounded 
+                  source={{ uri: editedUser.image || user?.image }} 
+                  size="large" 
+                />
+              ) : (
+                <Avatar rounded source={UserImage} size="large" />
+              )}
+              {isEditing && (
+                <View style={styles.editImageOverlay}>
+                  <FontAwesome name="camera" size={20} color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            {isEditing ? (
+              <TextInput 
+                style={styles.editInput}
+                value={editedUser.name}
+                onChangeText={(text) => setEditedUser(prev => ({ ...prev, name: text }))}
+                placeholder="Username"
+              />
+            ) : (
+              <Text style={styles.pageTitle}>{user?.name}</Text>
+            )}
           </View>
         </View>
 
@@ -97,23 +207,51 @@ export default function ProfileScreen() {
             <FontAwesome name="birthday-cake" size={24} color="#C44569" />
             <View style={styles.profileDetail}>
               <Text style={styles.profileTitle}>Birthdate</Text>
-              <Text style={styles.detail}>01/01/1980</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.editInput}
+                  value={editedUser.birthdate}
+                  onChangeText={(text) => setEditedUser(prev => ({ ...prev, birthdate: text }))}
+                  placeholder="DD/MM/YYYY"
+                />
+              ) : (
+                <Text style={styles.detail}>{user?.birthdate || '-'}</Text>
+              )}
             </View>
           </View>
 
           <View style={styles.profileContainer}>
-            <FontAwesome6 name="location-dot" size={24} color="#FF6348" />
+            <FontAwesome6 name="location-dot" size={24} color="#FF6348" style={{ marginRight: 6 }} />
             <View style={styles.profileDetail}>
               <Text style={styles.profileTitle}>Address</Text>
-              <Text style={styles.detail}>No. 82, Lorong Mahkota, Kuala Lumpur, 45800</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.editInput}
+                  value={editedUser.address}
+                  onChangeText={(text) => setEditedUser(prev => ({ ...prev, address: text }))}
+                  placeholder="Address"
+                  multiline
+                />
+              ) : (
+                <Text style={styles.detail}>{user?.address || '-'}</Text>
+              )}
             </View>
           </View>
 
           <View style={styles.profileContainer}>
-            <FontAwesome name="mobile-phone" size={24} color="#778BEB" />
+            <FontAwesome name="mobile-phone" size={42} color="#778BEB" style={{ marginRight: 6 }} />
             <View style={styles.profileDetail}>
               <Text style={styles.profileTitle}>Mobile No.</Text>
-              <Text style={styles.detail}>+6011-5299577</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.editInput}
+                  value={editedUser.mobileNo}
+                  onChangeText={(text) => setEditedUser(prev => ({ ...prev, mobileNo: text }))}
+                  placeholder="Mobile No."
+                />
+              ) : (
+                <Text style={styles.detail}>{user?.mobileNo || '-'}</Text>
+              )}
             </View>
           </View>
           
@@ -121,7 +259,7 @@ export default function ProfileScreen() {
             <FontAwesome name="envelope" size={24} color="#2ED573" />
             <View style={styles.profileDetail}>
               <Text style={styles.profileTitle}>Email Address</Text>
-              <Text style={styles.detail}>johndoe@gmail.com</Text>
+              <Text style={styles.detail}>{user?.email}</Text>
             </View>
           </View>
 
@@ -129,15 +267,28 @@ export default function ProfileScreen() {
             <FontAwesome5 name="key" size={24} color="#ECCC68" />
             <View style={styles.profileDetail}>
               <Text style={styles.profileTitle}>Password</Text>
-              <Text style={styles.detailPassword}>••••••••••••</Text>
+              <Text style={styles.detail}>
+                {showPassword ? user?.password : '•'.repeat(user?.password?.length || 0)}
+              </Text>
 
               <View style={styles.seePassword}>
-                <TouchableOpacity onPress={seePassword}>
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   <FontAwesome6 name="eye-low-vision" size={16} color="#333" />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+
+          {isEditing && (
+            <View style={styles.editButtonsContainer}>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.buttonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
         </View>
       </View>
@@ -234,7 +385,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   detail: {
-    maxWidth: 250,
+    maxWidth: 240,
     lineHeight: 20,
   },
   detailPassword: {
@@ -282,5 +433,45 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: '#333',
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#fff',
+    minWidth: 200,
+    marginTop: 8,
+  },
+  editButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  saveButton: {
+    backgroundColor: '#2ED573',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#FF4757',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  editImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
